@@ -37,6 +37,28 @@ def parse_caps(response: str) -> Capabilities:
     return Capabilities(**{key: fields[key] == "enabled" for key in expected})
 
 
+@dataclass(frozen=True)
+class DeviceStatus:
+    mode: str
+    write_enabled: bool
+
+
+def parse_status(response: str) -> DeviceStatus:
+    """Fail closed on unsupported firmware modes or enabled write access."""
+    parts = response.strip().split()
+    if not parts or parts[0] != "STATUS":
+        raise ValueError("Invalid status response")
+    fields: dict[str, str] = {}
+    for token in parts[1:]:
+        key, sep, value = token.partition("=")
+        if not sep or key not in {"mode", "write"} or key in fields:
+            raise ValueError("Malformed status field")
+        fields[key] = value
+    if fields != {"mode": "prototype", "write": "disabled"}:
+        raise ValueError("Device is not in the expected read-only prototype mode")
+    return DeviceStatus(mode="prototype", write_enabled=False)
+
+
 class DiscoveryClient:
     """Only PING, CAPS and STATUS. No memory or CAN access."""
 
@@ -65,3 +87,12 @@ class DiscoveryClient:
 
     def capabilities(self) -> Capabilities:
         return parse_caps(self.execute("CAPS"))
+
+    def status(self) -> DeviceStatus:
+        return parse_status(self.execute("STATUS"))
+
+    def verify_read_only(self) -> None:
+        """Reject any device advertising CAN, memory, flash, J2534 or writes."""
+        if any(vars(self.capabilities()).values()):
+            raise ValueError("Unexpected enabled device capability")
+        self.status()
