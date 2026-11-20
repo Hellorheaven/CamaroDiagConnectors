@@ -1,6 +1,6 @@
 import unittest
 
-from camarodiagconnectors.protocol import Capabilities, DiscoveryClient, parse_caps
+from camarodiagconnectors.protocol import Capabilities, DiscoveryClient, parse_caps, parse_status, DeviceStatus
 
 
 class MockSerial:
@@ -59,6 +59,45 @@ class DiscoveryTests(unittest.TestCase):
     def test_empty_response(self):
         with self.assertRaises(IOError):
             DiscoveryClient(MockSerial(b"")).execute("PING")
+
+    def test_status_read_only(self):
+        self.assertEqual(parse_status("STATUS mode=prototype write=disabled"), DeviceStatus("prototype", False))
+
+    def test_status_rejects_unsafe_or_malformed(self):
+        for response in (
+            "STATUS mode=prototype write=enabled",
+            "STATUS mode=vehicle write=disabled",
+            "STATUS mode=prototype write=disabled extra=1",
+            "STATUS mode=prototype mode=prototype write=disabled",
+            "STATUS mode=prototype",
+            "STATUS write=disabled",
+            "CAPS mode=prototype write=disabled",
+        ):
+            with self.subTest(response=response), self.assertRaises(ValueError):
+                parse_status(response)
+
+    def test_verify_read_only_accepts_disabled_device(self):
+        class MockSequence:
+            def __init__(self):
+                self.replies = iter((
+                    b"CAPS hs_can=disabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled\\n",
+                    b"STATUS mode=prototype write=disabled\\n",
+                ))
+                self.commands = []
+            def write(self, data):
+                self.commands.append(data)
+                return len(data)
+            def readline(self):
+                return next(self.replies)
+        serial = MockSequence()
+        DiscoveryClient(serial).verify_read_only()
+        self.assertEqual(serial.commands, [b"CAPS\\n", b"STATUS\\n"])
+
+    def test_verify_read_only_rejects_enabled_capability_before_status(self):
+        transport = MockSerial(b"CAPS hs_can=enabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled\\n")
+        with self.assertRaises(ValueError):
+            DiscoveryClient(transport).verify_read_only()
+        self.assertEqual(bytes(transport.outgoing), b"CAPS\\n")
 
 
 if __name__ == "__main__":
