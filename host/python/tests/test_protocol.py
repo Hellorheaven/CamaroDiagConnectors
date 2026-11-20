@@ -80,8 +80,8 @@ class DiscoveryTests(unittest.TestCase):
         class MockSequence:
             def __init__(self):
                 self.replies = iter((
-                    b"CAPS hs_can=disabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled\\n",
-                    b"STATUS mode=prototype write=disabled\\n",
+                    b"CAPS hs_can=disabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled\n",
+                    b"STATUS mode=prototype write=disabled\n",
                 ))
                 self.commands = []
             def write(self, data):
@@ -91,13 +91,13 @@ class DiscoveryTests(unittest.TestCase):
                 return next(self.replies)
         serial = MockSequence()
         DiscoveryClient(serial).verify_read_only()
-        self.assertEqual(serial.commands, [b"CAPS\\n", b"STATUS\\n"])
+        self.assertEqual(serial.commands, [b"CAPS\n", b"STATUS\n"])
 
     def test_verify_read_only_rejects_enabled_capability_before_status(self):
-        transport = MockSerial(b"CAPS hs_can=enabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled\\n")
+        transport = MockSerial(b"CAPS hs_can=enabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled\n")
         with self.assertRaises(ValueError):
             DiscoveryClient(transport).verify_read_only()
-        self.assertEqual(bytes(transport.outgoing), b"CAPS\\n")
+        self.assertEqual(bytes(transport.outgoing), b"CAPS\n")
 
 
 if __name__ == "__main__":
