@@ -75,8 +75,12 @@ class DiscoveryClient:
         if not reply or len(reply) > 256:
             raise IOError("Missing or oversize reply")
         # A reply must be one complete line; reject partial frames and injected replies.
-        if not reply.endswith(b"\n") or b"\n" in reply[:-1] or b"\r" in reply[:-2] or b"\x00" in reply:
+        if not reply.endswith(b"\n") or b"\n" in reply[:-1] or b"\r" in reply[:-2]:
             raise IOError("Malformed serial reply framing")
+        # Permit printable ASCII and only the optional terminal CRLF delimiter.
+        payload = reply[:-2] if reply.endswith(b"\r\n") else reply[:-1]
+        if any(byte < 0x20 or byte > 0x7e for byte in payload):
+            raise IOError("Control or non-ASCII byte in serial reply")
         try:
             response = reply.decode("ascii").strip()
         except UnicodeDecodeError as exc:
