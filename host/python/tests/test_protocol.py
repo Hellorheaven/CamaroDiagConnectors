@@ -68,10 +68,10 @@ class DiscoveryTests(unittest.TestCase):
 
     def test_reject_ascii_control_bytes_and_del(self):
         for reply in (
-            b"PONG CamaroDiagConnectors\\t0.1.0\\n",
-            b"PONG CamaroDiagConnectors\\x1b0.1.0\\n",
-            b"PONG CamaroDiagConnectors\\x7f0.1.0\\n",
-            b"PONG CamaroDiagConnectors\\x00\\n",
+            b"PONG CamaroDiagConnectors\t0.1.0\n",
+            b"PONG CamaroDiagConnectors\x1b0.1.0\n",
+            b"PONG CamaroDiagConnectors\x7f0.1.0\n",
+            b"PONG CamaroDiagConnectors\x00\n",
         ):
             with self.subTest(reply=reply), self.assertRaises(IOError):
                 DiscoveryClient(MockSerial(reply)).execute("PING")
