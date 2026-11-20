@@ -34,3 +34,17 @@ Pour tenter la découverte USB sur une carte ESP32-S3 **isolée du véhicule** :
 Projet distinct de la [PR CamaroDiag #54](https://github.com/Hellorheaven/CamaroDiag/pull/54), qui ne doit pas être ralentie. Coordination et exigences : [CamaroDiag #69](https://github.com/Hellorheaven/CamaroDiag/issues/69).
 
 Aucune licence open source choisie pour le moment. Ne pas publier de dumps, clés ou images firmware GM ni des données véhicules privées.
+
+
+## Outil de sauvegarde et de patch hors ligne
+
+Les commandes suivantes travaillent **sur des fichiers déjà présents sur le PC**, jamais directement sur une EEPROM ou un ECU :
+
+```bash
+cd host/python
+python -m camarodiagconnectors.offline_cli backup --target 24LC256 --capacity 32768 --input original.bin --output-prefix sauvegarde
+python -m camarodiagconnectors.offline_cli verify --prefix sauvegarde
+python -m camarodiagconnectors.offline_cli plan --target 24LC256 --technology i2c_eeprom --page-size 64 --input original.bin --patch 0x10:01 --proposed-output simulation.bin
+```
+
+`backup` crée `sauvegarde.bin` et `sauvegarde.json` en exclusivité (jamais d'écrasement). `verify` contrôle intégrité et couverture déclarée. `plan` indique les pages/secteurs qui changeraient, refuse les régions protégées et préserve tous les octets voisins de l'image. **Ni le fichier candidat ni le manifeste ne constituent une preuve de compatibilité matérielle ou une autorisation d'écriture.**
