@@ -59,9 +59,9 @@ class DiscoveryTests(unittest.TestCase):
     def test_reject_partial_or_injected_reply(self):
         for reply in (
             b"PONG CamaroDiagConnectors 0.1.0",
-            b"PONG CamaroDiagConnectors 0.1.0\\nSTATUS mode=prototype write=disabled\\n",
-            b"PONG CamaroDiagConnectors 0.1.0\\rEXTRA\\n",
-            b"PONG CamaroDiagConnectors\\x00 0.1.0\\n",
+            b"PONG CamaroDiagConnectors 0.1.0\nSTATUS mode=prototype write=disabled\n",
+            b"PONG CamaroDiagConnectors 0.1.0\rEXTRA\n",
+            b"PONG CamaroDiagConnectors\x00 0.1.0\n",
         ):
             with self.subTest(reply=reply), self.assertRaises(IOError):
                 DiscoveryClient(MockSerial(reply)).execute("PING")
