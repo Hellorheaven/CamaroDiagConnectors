@@ -1,0 +1,14 @@
+# Protocole expérimental USB
+
+Le firmware ESP32-S3 **actuel** écoute un port série ASCII 115200 bauds, avec lignes limitées à 96 caractères.
+
+| Requête | Réponse |
+|---|---|
+| `PING\n` | `PONG CamaroDiagConnectors 0.1.0` |
+| `CAPS\n` | `CAPS hs_can=disabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled` |
+| `STATUS\n` | `STATUS mode=prototype write=disabled` |
+| Autre | `ERR UNSUPPORTED` |
+
+Aucun opcode d'accès à la mémoire ou au bus du véhicule n'est implémenté.
+
+Le **framing binaire défini côté Python est un modèle hors ligne uniquement**, incompatible avec ce firmware ASCII. Format de simulation : magic `CD`, version sur un octet, opcode sur un octet, séquence uint16 LE, longueur uint16 LE, payload, CRC32 LE. Seuls PING, CAPABILITIES et STATUS existent. À développer avant déploiement : négociation de version, timeouts, contrôle de flux, authentification, refus des commandes destructives non autorisées et arrêt sécurisé.
