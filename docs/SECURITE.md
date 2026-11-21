@@ -24,3 +24,7 @@ L'import vérifie aussi que la racine du manifeste est un objet JSON et que la t
 La vérification refuse les composants `.json` et `.bin` qui ne sont pas des fichiers ordinaires (liens symboliques, périphériques, tubes nommés). Elle évite ainsi de lire volontairement des chemins externes ou des flux spéciaux via une sauvegarde. Le contrôle est effectué avant l'ouverture ; il ne protège **pas** contre une substitution concurrente de fichiers entre la vérification et l'ouverture (TOCTOU). Les sauvegardes doivent être conservées dans un répertoire privé et non modifiable par un tiers pendant la vérification.
 
 L'export refuse également les liens symboliques pendants (sans cible existante) aux chemins `.bin` ou `.json` : le contrôle de non-écrasement utilise `lexists` et la création exclusive. Cela ne rend pas l'export atomique pour les deux fichiers et ne protège pas contre toutes les courses dans un répertoire modifiable par un tiers.
+
+## Géométrie mémoire hors ligne
+
+Le planificateur refuse désormais les technologies mémoire inconnues, les dimensions booléennes (Python considère autrement `True` comme un entier) et les zones protégées qui ne sont pas des objets `Region`. Ces contrôles empêchent qu'une description mal typée produise un plan ambigu ; ils ne vérifient **ni** la référence réelle de la puce, **ni** sa tension, **ni** son brochage. Aucun plan ne confère une autorisation d'écriture sur matériel.
