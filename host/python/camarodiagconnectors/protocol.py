@@ -90,6 +90,8 @@ class DiscoveryClient:
         prefix = {"PING": "PONG ", "CAPS": "CAPS ", "STATUS": "STATUS "}[command]
         if not response.startswith(prefix):
             raise IOError("Unexpected device reply")
+        if command == "PING" and response != "PONG CamaroDiagConnectors 0.1.0":
+            raise IOError("Unsupported device identity or firmware version")
         return response
 
     def capabilities(self) -> Capabilities:
