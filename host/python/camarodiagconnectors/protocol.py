@@ -82,7 +82,7 @@ class DiscoveryClient:
         if any(byte < 0x20 or byte > 0x7e for byte in payload):
             raise IOError("Control or non-ASCII byte in serial reply")
         try:
-            response = reply.decode("ascii").strip()
+            response = payload.decode("ascii")
         except UnicodeDecodeError as exc:
             raise IOError("Non ASCII reply") from exc
         if response.startswith("ERR "):
