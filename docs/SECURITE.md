@@ -16,3 +16,5 @@ Le firmware ne sait ni lire ni écrire une mémoire ni transmettre du CAN ; le c
 
 ## Validation des manifestes hors ligne
 L'import Python refuse les champs JSON dupliqués (même lorsque leurs valeurs sont identiques) et les manifestes dépassant 64 Kio, avant lecture de l'image binaire. Ces contrôles réduisent les ambiguïtés de parsing et la consommation de mémoire ; ils ne constituent ni une signature cryptographique, ni une preuve d'origine physique. Les tests correspondants sont logiciels et ne valident aucun matériel.
+
+L'import vérifie aussi que la racine du manifeste est un objet JSON et que la taille réelle du fichier binaire correspond exactement à la longueur déclarée **avant de charger l'image en mémoire**. Il ne garantit pas une limite de taille absolue pour les images déclarées très grandes : l'appelant doit utiliser des quotas de stockage et de mémoire adaptés.
