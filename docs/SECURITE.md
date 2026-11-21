@@ -13,3 +13,18 @@ Avant chaque modification d'une mémoire ou d'un ECU, proposer **une sauvegarde 
 
 ## État implémenté
 Le firmware ne sait ni lire ni écrire une mémoire ni transmettre du CAN ; le code Python ne produit que des sauvegardes de **fichiers locaux** et des plans **hors ligne**. Aucun essai véhicule/ECU, pas de récupération matériellement démontrée. Ne jamais présenter une capacité désactivée comme disponible.
+
+## Validation des manifestes hors ligne
+L'import Python refuse les champs JSON dupliqués (même lorsque leurs valeurs sont identiques) et les manifestes dépassant 64 Kio, avant lecture de l'image binaire. Ces contrôles réduisent les ambiguïtés de parsing et la consommation de mémoire ; ils ne constituent ni une signature cryptographique, ni une preuve d'origine physique. Les tests correspondants sont logiciels et ne valident aucun matériel.
+
+L'import vérifie aussi que la racine du manifeste est un objet JSON et que la taille réelle du fichier binaire correspond exactement à la longueur déclarée **avant de calculer son empreinte SHA-256 par blocs, sans charger toute l'image en mémoire**. Il ne garantit pas une limite de taille absolue pour les images déclarées très grandes : l'appelant doit utiliser des quotas de stockage, de temps et d'entrées/sorties adaptés. L'empreinte attendue doit être une chaîne hexadécimale SHA-256 canonique de 64 caractères minuscules ; la comparaison utilise `hmac.compare_digest`. Cela ne constitue pas une authentification du manifeste.
+
+## Sauvegardes hors ligne : fichiers locaux
+
+La vérification refuse les composants `.json` et `.bin` qui ne sont pas des fichiers ordinaires (liens symboliques, périphériques, tubes nommés). Elle évite ainsi de lire volontairement des chemins externes ou des flux spéciaux via une sauvegarde. Le contrôle est effectué avant l'ouverture ; il ne protège **pas** contre une substitution concurrente de fichiers entre la vérification et l'ouverture (TOCTOU). Les sauvegardes doivent être conservées dans un répertoire privé et non modifiable par un tiers pendant la vérification.
+
+L'export refuse également les liens symboliques pendants (sans cible existante) aux chemins `.bin` ou `.json` : le contrôle de non-écrasement utilise `lexists` et la création exclusive. Cela ne rend pas l'export atomique pour les deux fichiers et ne protège pas contre toutes les courses dans un répertoire modifiable par un tiers.
+
+## Géométrie mémoire hors ligne
+
+Le planificateur refuse désormais les technologies mémoire inconnues, les dimensions booléennes (Python considère autrement `True` comme un entier) et les zones protégées qui ne sont pas des objets `Region`. Ces contrôles empêchent qu'une description mal typée produise un plan ambigu ; ils ne vérifient **ni** la référence réelle de la puce, **ni** sa tension, **ni** son brochage. Aucun plan ne confère une autorisation d'écriture sur matériel.

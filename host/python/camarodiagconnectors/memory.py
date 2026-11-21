@@ -42,6 +42,11 @@ class Geometry:
     protected: tuple[Region, ...] = ()
 
     def __post_init__(self) -> None:
+        if not isinstance(self.technology, Technology):
+            raise ValueError("Unsupported memory technology")
+        if (type(self.capacity) is not int or type(self.page_size) is not int
+                or (self.erase_size is not None and type(self.erase_size) is not int)):
+            raise ValueError("Memory dimensions must be integers, not booleans")
         if not self.name.strip() or self.capacity <= 0 or self.page_size <= 0:
             raise ValueError("Invalid chip name/capacity/page size")
         if self.page_size > self.capacity or self.capacity % self.page_size:
@@ -54,6 +59,8 @@ class Geometry:
         elif self.erase_size is not None:
             raise ValueError("Erase size only applies to NOR")
         for i, region in enumerate(self.protected):
+            if not isinstance(region, Region):
+                raise ValueError("Protected regions must be Region instances")
             if region.end > self.capacity:
                 raise ValueError("Protected region is out of bounds")
             if any(region.overlaps(other) for other in self.protected[:i]):

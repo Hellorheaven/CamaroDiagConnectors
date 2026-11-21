@@ -9,6 +9,25 @@ class MemoryPlanTests(unittest.TestCase):
         self.nor = Geometry("test-NOR", Technology.SPI_NOR, 128, 8, 32)
         self.image = bytes([0xAA] * 128)
 
+    def test_reject_unsupported_technology(self):
+        with self.assertRaisesRegex(ValueError, "Unsupported memory technology"):
+            Geometry("unknown", "spi_nor", 128, 8, 32)
+
+    def test_reject_boolean_geometry_dimensions(self):
+        for capacity, page_size, erase_size in (
+            (True, 1, None),
+            (128, True, None),
+            (128, 8, True),
+        ):
+            with self.subTest(capacity=capacity, page_size=page_size, erase_size=erase_size):
+                technology = Technology.SPI_NOR if erase_size is not None else Technology.I2C_EEPROM
+                with self.assertRaisesRegex(ValueError, "dimensions must be integers"):
+                    Geometry("invalid", technology, capacity, page_size, erase_size)
+
+    def test_reject_invalid_protected_region(self):
+        with self.assertRaisesRegex(ValueError, "Protected regions"):
+            Geometry("invalid", Technology.I2C_EEPROM, 128, 8, protected=((0, 8),))
+
     def test_single_byte_eeprom_updates_only_one_page(self):
         plan = plan_patches(self.eeprom, self.image, [Patch(4, b"\xbb")])
         self.assertEqual(plan.changed_bytes, 1)
