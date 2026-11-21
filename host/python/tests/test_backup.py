@@ -142,6 +142,21 @@ class BackupTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "regular files"):
                 verify_bundle(prefix)
 
+    def test_malformed_sha256_rejected(self):
+        m = backup_manifest("chip", 4, 0, b"abcd")
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / "backup"
+            write_bundle(prefix, b"abcd", m)
+            path = prefix.with_suffix(".json")
+            original = json.loads(path.read_text(encoding="utf-8"))
+            for bad in ("", "0" * 63, "G" * 64, "A" * 64, "0" * 65, 123):
+                with self.subTest(digest=bad):
+                    changed = dict(original)
+                    changed["image_sha256"] = bad
+                    path.write_text(json.dumps(changed), encoding="utf-8")
+                    with self.assertRaises(ValueError):
+                        verify_bundle(prefix)
+
     def test_corruption_detected(self):
         m = backup_manifest("chip", 4, 0, b"abcd")
         with tempfile.TemporaryDirectory() as directory:
