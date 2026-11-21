@@ -13,6 +13,21 @@ import stat
 from pathlib import Path
 
 
+def _open_regular_nofollow(path: Path):
+    """Open a regular file without following a final-component symlink."""
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(path, flags)
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise ValueError("Backup components must be regular files")
+        return os.fdopen(fd, "rb")
+    except BaseException:
+        os.close(fd)
+        raise
+
+
 @dataclass(frozen=True)
 class Manifest:
     schema: int
@@ -117,7 +132,7 @@ def verify_bundle(prefix: Path) -> Manifest:
         mode = path.lstat().st_mode
         if not stat.S_ISREG(mode):
             raise ValueError("Backup components must be regular files")
-    with metadata_path.open("rb") as stream:
+    with _open_regular_nofollow(metadata_path) as stream:
         raw = stream.read(64 * 1024 + 1)
     if len(raw) > 64 * 1024:
         raise ValueError("Manifest exceeds 64 KiB")
@@ -154,7 +169,7 @@ def verify_bundle(prefix: Path) -> Manifest:
     if manifest.physical_origin_verified or manifest.restoration_verified:
         raise ValueError("Offline bundle cannot certify physical origin or restoration")
     digest = sha256()
-    with binary_path.open("rb") as stream:
+    with _open_regular_nofollow(binary_path) as stream:
         remaining = manifest.region_length
         if os.fstat(stream.fileno()).st_size != remaining:
             raise ValueError("Image size disagrees with manifest")
