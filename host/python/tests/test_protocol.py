@@ -157,14 +157,14 @@ class DiscoveryTests(unittest.TestCase):
                 return len(data) - 1
             def readline(self):
                 self.read_called = True
-                return b"PONG CamaroDiagConnectors 0.1.0\\n"
+                return b"PONG CamaroDiagConnectors 0.1.0\n"
         transport = ShortWrite()
         with self.assertRaises(IOError):
             DiscoveryClient(transport).execute("PING")
         self.assertFalse(transport.read_called)
 
     def test_reject_oversized_serial_reply(self):
-        transport = MockSerial(b"PONG " + b"A" * 252 + b"\\n")
+        transport = MockSerial(b"PONG " + b"A" * 252 + b"\n")
         with self.assertRaises(IOError):
             DiscoveryClient(transport).execute("PING")
 
@@ -172,9 +172,9 @@ class DiscoveryTests(unittest.TestCase):
         class Sequence:
             def __init__(self):
                 self.replies = iter((
-                    b"PONG CamaroDiagConnectors 0.1.0\\n",
-                    b"CAPS hs_can=disabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled\\n",
-                    b"STATUS mode=prototype write=enabled\\n",
+                    b"PONG CamaroDiagConnectors 0.1.0\n",
+                    b"CAPS hs_can=disabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled\n",
+                    b"STATUS mode=prototype write=enabled\n",
                 ))
                 self.commands = []
             def write(self, data):
@@ -185,7 +185,7 @@ class DiscoveryTests(unittest.TestCase):
         transport = Sequence()
         with self.assertRaises(ValueError):
             DiscoveryClient(transport).verify_read_only()
-        self.assertEqual(transport.commands, [b"PING\\n", b"CAPS\\n", b"STATUS\\n"])
+        self.assertEqual(transport.commands, [b"PING\n", b"CAPS\n", b"STATUS\n"])
 
 if __name__ == "__main__":
     unittest.main()
