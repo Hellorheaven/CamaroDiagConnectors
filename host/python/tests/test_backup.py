@@ -81,6 +81,24 @@ class BackupTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 verify_bundle(prefix)
 
+    def test_non_object_manifest_rejected(self):
+        m = backup_manifest("chip", 4, 0, b"abcd")
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / "backup"
+            write_bundle(prefix, b"abcd", m)
+            prefix.with_suffix(".json").write_text("[]", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                verify_bundle(prefix)
+
+    def test_declared_length_mismatch_rejected_before_binary_read(self):
+        m = backup_manifest("chip", 4, 0, b"abcd")
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / "backup"
+            write_bundle(prefix, b"abcd", m)
+            prefix.with_suffix(".bin").write_bytes(b"abcd" * 4096)
+            with self.assertRaisesRegex(ValueError, "Image size disagrees"):
+                verify_bundle(prefix)
+
     def test_corruption_detected(self):
         m = backup_manifest("chip", 4, 0, b"abcd")
         with tempfile.TemporaryDirectory() as directory:
