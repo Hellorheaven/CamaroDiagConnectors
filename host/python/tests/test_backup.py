@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 import tempfile
 import unittest
 from pathlib import Path
@@ -35,6 +36,26 @@ class BackupTests(unittest.TestCase):
             self.assertEqual(verify_bundle(prefix), m)
             with self.assertRaises(FileExistsError):
                 write_bundle(prefix, b"abcdefgh", m)
+
+    def test_forged_export_manifest_rejected_without_creating_files(self):
+        m = backup_manifest("chip", 4, 0, b"abcd")
+        variants = (
+            replace(m, physical_origin_verified=True),
+            replace(m, restoration_verified=True),
+            replace(m, complete_coverage=False),
+            replace(m, secondary_read_matched=False),
+            replace(m, secondary_read_matched=1),
+            replace(m, schema=2),
+            replace(m, declared_capacity=True),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / "backup"
+            for forged in variants:
+                with self.subTest(manifest=forged):
+                    with self.assertRaises(ValueError):
+                        write_bundle(prefix, b"abcd", forged)
+                    self.assertFalse(prefix.with_suffix(".bin").exists())
+                    self.assertFalse(prefix.with_suffix(".json").exists())
 
     def test_corruption_detected(self):
         m = backup_manifest("chip", 4, 0, b"abcd")
