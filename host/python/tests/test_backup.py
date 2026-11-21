@@ -1,4 +1,7 @@
 import json
+import os
+import stat
+from unittest.mock import patch
 from dataclasses import replace
 import tempfile
 import unittest
@@ -8,6 +11,24 @@ from camarodiagconnectors.backup import backup_manifest, write_bundle, verify_bu
 
 
 class BackupTests(unittest.TestCase):
+    def test_opened_descriptor_must_be_regular(self):
+        from camarodiagconnectors.backup import _open_regular_nofollow
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(ValueError):
+                _open_regular_nofollow(Path(directory))
+
+    @unittest.skipUnless(hasattr(os, "O_NOFOLLOW"), "O_NOFOLLOW unavailable")
+    def test_open_rejects_symlink_even_if_path_was_prechecked(self):
+        from camarodiagconnectors.backup import _open_regular_nofollow
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = root / "original.bin"
+            link = root / "alias.bin"
+            original.write_bytes(b"test")
+            link.symlink_to(original)
+            with self.assertRaises(OSError):
+                _open_regular_nofollow(link)
+
     def test_complete_with_second_read(self):
         m = backup_manifest("test-chip", 4, 0, b"abcd", b"abcd")
         self.assertTrue(m.complete_coverage)
