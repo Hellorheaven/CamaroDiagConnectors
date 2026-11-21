@@ -57,6 +57,30 @@ class BackupTests(unittest.TestCase):
                     self.assertFalse(prefix.with_suffix(".bin").exists())
                     self.assertFalse(prefix.with_suffix(".json").exists())
 
+    def test_duplicate_json_fields_rejected(self):
+        m = backup_manifest("chip", 4, 0, b"abcd")
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / "backup"
+            write_bundle(prefix, b"abcd", m)
+            path = prefix.with_suffix(".json")
+            original = path.read_text(encoding="utf-8")
+            path.write_text(original.replace(
+                '"schema": 1,', '"schema": 1, "schema": 1,'
+            ), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                verify_bundle(prefix)
+
+    def test_oversized_manifest_rejected(self):
+        m = backup_manifest("chip", 4, 0, b"abcd")
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / "backup"
+            write_bundle(prefix, b"abcd", m)
+            prefix.with_suffix(".json").write_text(
+                " " * (64 * 1024 + 1), encoding="utf-8"
+            )
+            with self.assertRaises(ValueError):
+                verify_bundle(prefix)
+
     def test_corruption_detected(self):
         m = backup_manifest("chip", 4, 0, b"abcd")
         with tempfile.TemporaryDirectory() as directory:
