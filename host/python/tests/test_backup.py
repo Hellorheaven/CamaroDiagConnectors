@@ -65,6 +65,28 @@ class BackupTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 verify_bundle(prefix)
 
+    def test_malformed_manifest_types_rejected(self):
+        m = backup_manifest("chip", 4, 0, b"abcd")
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / "backup"
+            write_bundle(prefix, b"abcd", m)
+            path = prefix.with_suffix(".json")
+            original = json.loads(path.read_text())
+            for field, value in (
+                ("declared_capacity", True),
+                ("region_offset", "0"),
+                ("complete_coverage", 1),
+                ("target", 7),
+                ("secondary_read_matched", False),
+                ("physical_origin_verified", "false"),
+            ):
+                with self.subTest(field=field):
+                    data = dict(original)
+                    data[field] = value
+                    path.write_text(json.dumps(data))
+                    with self.assertRaises(ValueError):
+                        verify_bundle(prefix)
+
     def test_claim_of_physical_origin_rejected(self):
         m = backup_manifest("chip", 4, 0, b"abcd")
         with tempfile.TemporaryDirectory() as directory:
