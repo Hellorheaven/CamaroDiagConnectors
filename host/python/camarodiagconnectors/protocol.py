@@ -22,7 +22,7 @@ class Capabilities:
 
 
 def parse_caps(response: str) -> Capabilities:
-    parts = response.strip().split()
+    if response != response.strip() or "  " in response or "\t" in response:\n        raise ValueError("Noncanonical response whitespace")\n    parts = response.split(" ")
     expected = {"hs_can", "sw_can", "eeprom_read", "eeprom_write", "ecu_flash", "j2534"}
     if not parts or parts[0] != "CAPS":
         raise ValueError("Invalid capability response")
