@@ -9,6 +9,7 @@ from dataclasses import dataclass, asdict
 from hashlib import sha256
 import json
 import os
+import stat
 from pathlib import Path
 
 
@@ -110,6 +111,12 @@ def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]
 
 def verify_bundle(prefix: Path) -> Manifest:
     metadata_path = prefix.with_suffix(".json")
+    binary_path = prefix.with_suffix(".bin")
+    # Offline bundles must not follow links into arbitrary host files or devices.
+    for path in (metadata_path, binary_path):
+        mode = path.lstat().st_mode
+        if not stat.S_ISREG(mode):
+            raise ValueError("Backup components must be regular files")
     with metadata_path.open("rb") as stream:
         raw = stream.read(64 * 1024 + 1)
     if len(raw) > 64 * 1024:
@@ -147,7 +154,7 @@ def verify_bundle(prefix: Path) -> Manifest:
     if manifest.physical_origin_verified or manifest.restoration_verified:
         raise ValueError("Offline bundle cannot certify physical origin or restoration")
     digest = sha256()
-    with prefix.with_suffix(".bin").open("rb") as stream:
+    with binary_path.open("rb") as stream:
         remaining = manifest.region_length
         if os.fstat(stream.fileno()).st_size != remaining:
             raise ValueError("Image size disagrees with manifest")
