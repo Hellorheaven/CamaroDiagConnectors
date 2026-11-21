@@ -54,6 +54,14 @@ class DiscoveryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_caps("CAPS hs_can=maybe sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled")
 
+    def test_reject_noncanonical_response_whitespace(self):
+        valid_caps = "CAPS hs_can=disabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled"
+        valid_status = "STATUS mode=prototype write=disabled"
+        for parser, valid in ((parse_caps, valid_caps), (parse_status, valid_status)):
+            for invalid in (" " + valid, valid + " ", valid.replace(" ", "  ", 1), valid.replace(" ", "\\t", 1)):
+                with self.subTest(parser=parser.__name__, invalid=invalid), self.assertRaises(ValueError):
+                    parser(invalid)
+
     def test_wrong_reply_prefix(self):
         with self.assertRaises(IOError):
             DiscoveryClient(MockSerial(b"CAPS invalid\n")).execute("PING")
