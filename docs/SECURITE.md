@@ -13,3 +13,6 @@ Avant chaque modification d'une mémoire ou d'un ECU, proposer **une sauvegarde 
 
 ## État implémenté
 Le firmware ne sait ni lire ni écrire une mémoire ni transmettre du CAN ; le code Python ne produit que des sauvegardes de **fichiers locaux** et des plans **hors ligne**. Aucun essai véhicule/ECU, pas de récupération matériellement démontrée. Ne jamais présenter une capacité désactivée comme disponible.
+
+## Validation des manifestes hors ligne
+L'import Python refuse les champs JSON dupliqués (même lorsque leurs valeurs sont identiques) et les manifestes dépassant 64 Kio, avant lecture de l'image binaire. Ces contrôles réduisent les ambiguïtés de parsing et la consommation de mémoire ; ils ne constituent ni une signature cryptographique, ni une preuve d'origine physique. Les tests correspondants sont logiciels et ne valident aucun matériel.
