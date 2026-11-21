@@ -115,8 +115,17 @@ def verify_bundle(prefix: Path) -> Manifest:
         metadata_path.read_text(encoding="utf-8"),
         object_pairs_hook=_reject_duplicate_keys,
     )
+    if type(metadata) is not dict:
+        raise ValueError("Manifest must be a JSON object")
     manifest = Manifest(**metadata)
-    image = prefix.with_suffix(".bin").read_bytes()
+    # Refuse oversized images before allocating their contents in memory.
+    # The manifest is untrusted; its declared length is validated below.
+    image_path = prefix.with_suffix(".bin")
+    if type(manifest.region_length) is not int or manifest.region_length <= 0:
+        raise ValueError("Invalid declared image length")
+    if image_path.stat().st_size != manifest.region_length:
+        raise ValueError("Image size disagrees with manifest")
+    image = image_path.read_bytes()
     if (type(manifest.schema) is not int or type(manifest.declared_capacity) is not int
         or type(manifest.region_offset) is not int or type(manifest.region_length) is not int
         or type(manifest.complete_coverage) is not bool
