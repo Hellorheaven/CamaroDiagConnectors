@@ -22,6 +22,16 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(DiscoveryClient(transport).execute("PING"), "PONG CamaroDiagConnectors 0.1.0")
         self.assertEqual(bytes(transport.outgoing), b"PING\n")
 
+    def test_ping_rejects_unknown_identity_or_version(self):
+        for reply in (
+            b"PONG OtherDevice 0.1.0\n",
+            b"PONG CamaroDiagConnectors 0.2.0\n",
+            b"PONG CamaroDiagConnectors 0.1.0 EXTRA\n",
+            b"PONG CamaroDiagConnectors 0.1.0  \n",
+        ):
+            with self.subTest(reply=reply), self.assertRaises(IOError):
+                DiscoveryClient(MockSerial(reply)).execute("PING")
+
     def test_caps_are_all_disabled(self):
         transport = MockSerial(b"CAPS hs_can=disabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled\n")
         self.assertEqual(DiscoveryClient(transport).capabilities(), Capabilities(False, False, False, False, False, False))
