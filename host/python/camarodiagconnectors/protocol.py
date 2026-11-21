@@ -22,7 +22,9 @@ class Capabilities:
 
 
 def parse_caps(response: str) -> Capabilities:
-    if response != response.strip() or "  " in response or "\t" in response:\n        raise ValueError("Noncanonical response whitespace")\n    parts = response.split(" ")
+    if response != response.strip() or "  " in response or "\t" in response:
+        raise ValueError("Noncanonical response whitespace")
+    parts = response.split(" ")
     expected = {"hs_can", "sw_can", "eeprom_read", "eeprom_write", "ecu_flash", "j2534"}
     if not parts or parts[0] != "CAPS":
         raise ValueError("Invalid capability response")
@@ -45,7 +47,9 @@ class DeviceStatus:
 
 def parse_status(response: str) -> DeviceStatus:
     """Fail closed on unsupported firmware modes or enabled write access."""
-    parts = response.strip().split()
+    if response != response.strip() or "  " in response or "\t" in response:
+        raise ValueError("Noncanonical response whitespace")
+    parts = response.split(" ")
     if not parts or parts[0] != "STATUS":
         raise ValueError("Invalid status response")
     fields: dict[str, str] = {}
