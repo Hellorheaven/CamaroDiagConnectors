@@ -90,7 +90,7 @@ def verify_bundle(prefix: Path) -> Manifest:
         or type(manifest.complete_coverage) is not bool
         or type(manifest.physical_origin_verified) is not bool
         or type(manifest.restoration_verified) is not bool
-        or manifest.secondary_read_matched not in (None, True)
+        or (manifest.secondary_read_matched is not None and manifest.secondary_read_matched is not True)
         or type(manifest.target) is not str or type(manifest.source) is not str
         or type(manifest.image_sha256) is not str):
         raise ValueError("Invalid backup metadata types or unsupported readback claim")
