@@ -8,8 +8,10 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 from hashlib import sha256
 import json
+import hmac
 import os
 import stat
+import re
 from pathlib import Path
 
 
@@ -155,6 +157,8 @@ def verify_bundle(prefix: Path) -> Manifest:
         or type(manifest.target) is not str or type(manifest.source) is not str
         or type(manifest.image_sha256) is not str):
         raise ValueError("Invalid backup metadata types or unsupported readback claim")
+    if not re.fullmatch(r"[0-9a-f]{64}", manifest.image_sha256):
+        raise ValueError("Invalid SHA-256 digest format")
     if manifest.schema != 1 or manifest.region_length <= 0:
         raise ValueError("Invalid schema or image length")
     if not manifest.target.strip() or not manifest.source.strip():
@@ -181,6 +185,6 @@ def verify_bundle(prefix: Path) -> Manifest:
             remaining -= len(chunk)
         if stream.read(1):
             raise ValueError("Image size disagrees with manifest")
-    if digest.hexdigest() != manifest.image_sha256:
+    if not hmac.compare_digest(digest.hexdigest(), manifest.image_sha256):
         raise ValueError("Backup integrity failure")
     return manifest
