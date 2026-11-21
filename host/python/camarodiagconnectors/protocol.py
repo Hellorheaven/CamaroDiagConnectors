@@ -102,6 +102,7 @@ class DiscoveryClient:
 
     def verify_read_only(self) -> None:
         """Reject any device advertising CAN, memory, flash, J2534 or writes."""
+        self.execute("PING")
         if any(vars(self.capabilities()).values()):
             raise ValueError("Unexpected enabled device capability")
         self.status()
