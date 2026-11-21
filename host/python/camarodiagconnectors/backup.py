@@ -85,6 +85,15 @@ def verify_bundle(prefix: Path) -> Manifest:
     metadata = json.loads(prefix.with_suffix(".json").read_text(encoding="utf-8"))
     manifest = Manifest(**metadata)
     image = prefix.with_suffix(".bin").read_bytes()
+    if (type(manifest.schema) is not int or type(manifest.declared_capacity) is not int
+        or type(manifest.region_offset) is not int or type(manifest.region_length) is not int
+        or type(manifest.complete_coverage) is not bool
+        or type(manifest.physical_origin_verified) is not bool
+        or type(manifest.restoration_verified) is not bool
+        or manifest.secondary_read_matched not in (None, True)
+        or type(manifest.target) is not str or type(manifest.source) is not str
+        or type(manifest.image_sha256) is not str):
+        raise ValueError("Invalid backup metadata types or unsupported readback claim")
     if manifest.schema != 1 or len(image) != manifest.region_length:
         raise ValueError("Invalid schema or image length")
     if not manifest.target.strip() or not manifest.source.strip() or not image:
