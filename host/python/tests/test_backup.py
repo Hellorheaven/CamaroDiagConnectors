@@ -56,6 +56,23 @@ class BackupTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 write_bundle(prefix, b"abcdefgh", m)
 
+    def test_dangling_symlink_components_rejected_without_side_effects(self):
+        m = backup_manifest("chip", 4, 0, b"abcd")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prefix = root / "backup"
+            for suffix in (".bin", ".json"):
+                with self.subTest(suffix=suffix):
+                    link = prefix.with_suffix(suffix)
+                    link.symlink_to(root / "missing-target")
+                    with self.assertRaises(FileExistsError):
+                        write_bundle(prefix, b"abcd", m)
+                    self.assertTrue(link.is_symlink())
+                    self.assertFalse(prefix.with_suffix(
+                        ".json" if suffix == ".bin" else ".bin"
+                    ).exists())
+                    link.unlink()
+
     def test_forged_export_manifest_rejected_without_creating_files(self):
         m = backup_manifest("chip", 4, 0, b"abcd")
         variants = (
