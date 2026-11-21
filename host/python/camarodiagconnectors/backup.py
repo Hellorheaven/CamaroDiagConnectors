@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 
 
@@ -109,23 +110,20 @@ def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]
 
 def verify_bundle(prefix: Path) -> Manifest:
     metadata_path = prefix.with_suffix(".json")
-    if metadata_path.stat().st_size > 64 * 1024:
+    with metadata_path.open("rb") as stream:
+        raw = stream.read(64 * 1024 + 1)
+    if len(raw) > 64 * 1024:
         raise ValueError("Manifest exceeds 64 KiB")
     metadata = json.loads(
-        metadata_path.read_text(encoding="utf-8"),
+        raw.decode("utf-8"),
         object_pairs_hook=_reject_duplicate_keys,
     )
     if type(metadata) is not dict:
         raise ValueError("Manifest must be a JSON object")
-    manifest = Manifest(**metadata)
-    # Refuse oversized images before allocating their contents in memory.
-    # The manifest is untrusted; its declared length is validated below.
-    image_path = prefix.with_suffix(".bin")
-    if type(manifest.region_length) is not int or manifest.region_length <= 0:
-        raise ValueError("Invalid declared image length")
-    if image_path.stat().st_size != manifest.region_length:
-        raise ValueError("Image size disagrees with manifest")
-    image = image_path.read_bytes()
+    try:
+        manifest = Manifest(**metadata)
+    except TypeError as exc:
+        raise ValueError("Invalid manifest fields") from exc
     if (type(manifest.schema) is not int or type(manifest.declared_capacity) is not int
         or type(manifest.region_offset) is not int or type(manifest.region_length) is not int
         or type(manifest.complete_coverage) is not bool
@@ -135,19 +133,32 @@ def verify_bundle(prefix: Path) -> Manifest:
         or type(manifest.target) is not str or type(manifest.source) is not str
         or type(manifest.image_sha256) is not str):
         raise ValueError("Invalid backup metadata types or unsupported readback claim")
-    if manifest.schema != 1 or len(image) != manifest.region_length:
+    if manifest.schema != 1 or manifest.region_length <= 0:
         raise ValueError("Invalid schema or image length")
-    if not manifest.target.strip() or not manifest.source.strip() or not image:
+    if not manifest.target.strip() or not manifest.source.strip():
         raise ValueError("Missing backup metadata")
-    if sha256(image).hexdigest() != manifest.image_sha256:
-        raise ValueError("Backup integrity failure")
     if manifest.declared_capacity <= 0 or manifest.region_offset < 0 or (
         manifest.region_offset + manifest.region_length > manifest.declared_capacity
     ):
         raise ValueError("Invalid memory coverage")
-    expected_complete = manifest.region_offset == 0 and len(image) == manifest.declared_capacity
+    expected_complete = manifest.region_offset == 0 and manifest.region_length == manifest.declared_capacity
     if manifest.complete_coverage != expected_complete:
         raise ValueError("Contradictory complete-coverage flag")
     if manifest.physical_origin_verified or manifest.restoration_verified:
         raise ValueError("Offline bundle cannot certify physical origin or restoration")
+    digest = sha256()
+    with prefix.with_suffix(".bin").open("rb") as stream:
+        remaining = manifest.region_length
+        if os.fstat(stream.fileno()).st_size != remaining:
+            raise ValueError("Image size disagrees with manifest")
+        while remaining:
+            chunk = stream.read(min(remaining, 1024 * 1024))
+            if not chunk:
+                raise ValueError("Image size disagrees with manifest")
+            digest.update(chunk)
+            remaining -= len(chunk)
+        if stream.read(1):
+            raise ValueError("Image size disagrees with manifest")
+    if digest.hexdigest() != manifest.image_sha256:
+        raise ValueError("Backup integrity failure")
     return manifest
