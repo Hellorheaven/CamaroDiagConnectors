@@ -96,7 +96,8 @@ def write_bundle(prefix: Path, image: bytes, manifest: Manifest) -> None:
         raise ValueError("Untrusted or inconsistent backup metadata")
     binary = prefix.with_suffix(".bin")
     metadata = prefix.with_suffix(".json")
-    if binary.exists() or metadata.exists():
+    # Path.exists() follows symlinks and misses dangling links; reject those too.
+    if os.path.lexists(binary) or os.path.lexists(metadata):
         raise FileExistsError("Original backup files must not be overwritten")
     binary.parent.mkdir(parents=True, exist_ok=True)
     binary_created = False
