@@ -58,6 +58,14 @@ def write_bundle(prefix: Path, image: bytes, manifest: Manifest) -> None:
     """Create backup .bin/.json files exclusively, never overwrite."""
     if sha256(image).hexdigest() != manifest.image_sha256 or len(image) != manifest.region_length:
         raise ValueError("Image does not match manifest")
+    if (type(manifest.schema) is not int or type(manifest.declared_capacity) is not int
+        or type(manifest.region_offset) is not int or type(manifest.region_length) is not int
+        or type(manifest.complete_coverage) is not bool
+        or type(manifest.physical_origin_verified) is not bool
+        or type(manifest.restoration_verified) is not bool
+        or type(manifest.target) is not str or type(manifest.source) is not str
+        or type(manifest.image_sha256) is not str):
+        raise ValueError("Invalid backup metadata types")
     if type(manifest.secondary_read_matched) not in (bool, type(None)):
         raise ValueError("Invalid secondary read status")
     expected = backup_manifest(
