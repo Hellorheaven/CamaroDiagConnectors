@@ -99,6 +99,30 @@ class BackupTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Image size disagrees"):
                 verify_bundle(prefix)
 
+    def test_symlink_manifest_rejected(self):
+        m = backup_manifest("chip", 4, 0, b"abcd")
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / "backup"
+            write_bundle(prefix, b"abcd", m)
+            original = prefix.with_suffix(".json")
+            replacement = Path(directory) / "manifest-copy.json"
+            original.rename(replacement)
+            original.symlink_to(replacement)
+            with self.assertRaisesRegex(ValueError, "regular files"):
+                verify_bundle(prefix)
+
+    def test_symlink_image_rejected(self):
+        m = backup_manifest("chip", 4, 0, b"abcd")
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / "backup"
+            write_bundle(prefix, b"abcd", m)
+            original = prefix.with_suffix(".bin")
+            replacement = Path(directory) / "image-copy.bin"
+            original.rename(replacement)
+            original.symlink_to(replacement)
+            with self.assertRaisesRegex(ValueError, "regular files"):
+                verify_bundle(prefix)
+
     def test_corruption_detected(self):
         m = backup_manifest("chip", 4, 0, b"abcd")
         with tempfile.TemporaryDirectory() as directory:
