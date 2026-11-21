@@ -149,5 +149,43 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(bytes(transport.outgoing), b"PING\n")
 
 
+    def test_short_serial_write_fails_before_read(self):
+        class ShortWrite:
+            def __init__(self):
+                self.read_called = False
+            def write(self, data):
+                return len(data) - 1
+            def readline(self):
+                self.read_called = True
+                return b"PONG CamaroDiagConnectors 0.1.0\\n"
+        transport = ShortWrite()
+        with self.assertRaises(IOError):
+            DiscoveryClient(transport).execute("PING")
+        self.assertFalse(transport.read_called)
+
+    def test_reject_oversized_serial_reply(self):
+        transport = MockSerial(b"PONG " + b"A" * 252 + b"\\n")
+        with self.assertRaises(IOError):
+            DiscoveryClient(transport).execute("PING")
+
+    def test_verify_read_only_rejects_unsafe_status(self):
+        class Sequence:
+            def __init__(self):
+                self.replies = iter((
+                    b"PONG CamaroDiagConnectors 0.1.0\\n",
+                    b"CAPS hs_can=disabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled\\n",
+                    b"STATUS mode=prototype write=enabled\\n",
+                ))
+                self.commands = []
+            def write(self, data):
+                self.commands.append(data)
+                return len(data)
+            def readline(self):
+                return next(self.replies)
+        transport = Sequence()
+        with self.assertRaises(ValueError):
+            DiscoveryClient(transport).verify_read_only()
+        self.assertEqual(transport.commands, [b"PING\\n", b"CAPS\\n", b"STATUS\\n"])
+
 if __name__ == "__main__":
     unittest.main()
