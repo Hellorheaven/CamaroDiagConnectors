@@ -18,6 +18,8 @@ jobs:
           /tmp/programming_policy_test
           g++ -std=c++11 -Wall -Wextra -Werror -pedantic firmware/esp32s3/native-tests/binary_frame_test.cpp -o /tmp/binary_frame_test
           /tmp/binary_frame_test
+          g++ -std=c++11 -Wall -Wextra -Werror -pedantic firmware/esp32s3/native-tests/frame_receiver_test.cpp -o /tmp/frame_receiver_test
+          /tmp/frame_receiver_test
   esp32-build:
     runs-on: ubuntu-latest
     steps:
