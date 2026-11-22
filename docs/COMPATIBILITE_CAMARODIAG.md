@@ -10,3 +10,6 @@ Les PR CamaroDiag #70 et CamaroDiagConnectors #6 sont développées de façon co
 - Les images ECU restent au format constructeur, sans enveloppe cryptographique arbitraire.
 
 Validation de fin du lot : tests natifs C++, Python, Java/Kotlin, Windows et builds des deux firmwares ; recette USB sur carte isolée distincte des tests logiciels. Ne pas fusionner tant que les critères de la PR concernée ne sont pas validés.
+
+## ISO-TP CAN FD (analyse passive)
+Le décodeur commun accepte maintenant explicitement CAN classique ou CAN FD, tailles de données CAN FD valides 12/16/20/24/32/48/64 octets, SF avec longueur étendue et FF/CF jusqu'à 4095 octets. Mélange des formats ignoré ; trames mal formées du canal choisi bloquent le décodeur. Pas d'adressage étendu, de longues FF 32 bits, de FlowControl envoyé ni de liaison physique active. Vecteurs C++ synthétiques ; référence de format ISO 15765-2:2024. Ce développement ne qualifie aucune VCI ni application OEM.

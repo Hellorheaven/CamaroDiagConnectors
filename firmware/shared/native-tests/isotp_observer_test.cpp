@@ -30,4 +30,32 @@ int main(){
   assert(extended.feed(0x18daf110,true,sf,5,0)==R::Complete);
   cd::IsoTpObserver bad(0x7e8,false);sf[0]=7;
   assert(bad.feed(0x7e8,false,sf,5,0)==R::Fault);
+  // Synthetic FD frames: 12-byte escaped SF, 64-byte FF and shorter final CF.
+  uint8_t fdSingle[12]={0,10,1,2,3,4,5,6,7,8,9,10};
+  cd::IsoTpObserver fd(0x7e8,false,true);
+  assert(fd.feed(0x7e8,false,fdSingle,12,0)==R::Ignored);
+  assert(fd.feed(0x7e8,false,fdSingle,12,1,true)==R::Complete);
+  assert(fd.size()==10&&fd.message()[9]==10&&fd.consume());
+  uint8_t fdFirst[64]={0x10,70};
+  for(unsigned i=2;i<64;++i)fdFirst[i]=uint8_t(i-2);
+  uint8_t fdLast[12]={0x21,62,63,64,65,66,67,68,69};
+  assert(fd.feed(0x7e8,false,fdFirst,64,2,true)==R::Pending);
+  assert(fd.feed(0x7e8,false,fdLast,12,3,true)==R::Complete);
+  assert(fd.size()==70);
+  for(unsigned i=0;i<70;++i)assert(fd.message()[i]==i);
+  cd::IsoTpObserver badFd(0x7e8,false,true);
+  assert(badFd.feed(0x7e8,false,fdSingle,10,0,true)==R::Fault);
+  cd::IsoTpObserver badEscape(0x7e8,false,true);
+  fdSingle[0]=1;
+  assert(badEscape.feed(0x7e8,false,fdSingle,12,0,true)==R::Fault);
+  cd::IsoTpObserver shortFd(0x7e8,false,true);
+  assert(shortFd.feed(0x7e8,false,fdFirst,64,0,true)==R::Pending);
+  assert(shortFd.feed(0x7e8,false,fdLast,8,1,true)==R::Fault);
+  cd::IsoTpObserver longCf(0x7e8,false,true);
+  uint8_t ff12[12]={0x10,30};
+  assert(longCf.feed(0x7e8,false,ff12,12,0,true)==R::Pending);
+  assert(longCf.feed(0x7e8,false,fdFirst,64,1,true)==R::Fault);
+  cd::IsoTpObserver classic(0x7e8,false);
+  assert(classic.feed(0x7e8,false,fdSingle,12,0,true)==R::Ignored);
+  assert(classic.feed(0x7e8,false,fdSingle,12,0)==R::Fault);
 }
