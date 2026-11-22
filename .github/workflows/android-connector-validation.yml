@@ -19,8 +19,13 @@ jobs:
           mkdir -p /tmp/android-protocol
           javac -Xlint:all -Werror -d /tmp/android-protocol host/android/src/main/java/com/camarodiag/connectors/BinaryDiscovery.java host/android/src/test/java/com/camarodiag/connectors/BinaryDiscoveryTest.java
           java -ea -cp /tmp/android-protocol com.camarodiag.connectors.BinaryDiscoveryTest
-      - uses: android-actions/setup-android@v3
-      - run: sdkmanager "platforms;android-35"
+      - name: Use runner Android SDK
+        run: |
+          test -n "$ANDROID_HOME"
+          if [ ! -f "$ANDROID_HOME/platforms/android-35/android.jar" ]; then
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35"
+          fi
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
       - name: Compile native USB Host adapter
         run: |
           javac -Xlint:all -Werror -cp "$ANDROID_HOME/platforms/android-35/android.jar" -d /tmp/android-protocol host/android/src/main/java/com/camarodiag/connectors/*.java
