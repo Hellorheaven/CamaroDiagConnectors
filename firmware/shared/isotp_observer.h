@@ -34,7 +34,7 @@ class IsoTpObserver {
     if(type==2){
       if(!active_||dlc<2||(data[0]&15)!=next_)return fail();
       const size_t remaining=total_-used_;
-      if(remaining>7&&dlc!=8)return fail();
+      if((remaining>7&&dlc!=8)||(remaining<=7&&dlc-1<remaining))return fail();
       const size_t n=remaining<dlc-1?remaining:dlc-1;
       std::memcpy(buffer_+used_,data+1,n);used_+=n;
       next_=uint8_t((next_+1)&15);last_=now;
