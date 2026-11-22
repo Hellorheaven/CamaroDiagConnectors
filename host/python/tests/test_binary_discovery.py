@@ -72,6 +72,17 @@ class BinaryDiscoveryTests(unittest.TestCase):
             client.execute(Op.STATUS)
         self.assertTrue(client.closed)
         self.assertEqual(serial.sent,[])
+    def test_slow_drip_cannot_reset_response_deadline(self):
+        serial = SimulatedSerial()
+        ticks = iter(i * 0.5 for i in range(100))
+        client = BinaryDiscoveryClient(serial, clock=lambda: next(ticks))
+        with self.assertRaises(TimeoutError):
+            client.verify_read_only()
+        self.assertTrue(client.closed)
+        self.assertEqual(len(serial.sent), 1)
+        with self.assertRaises(IOError):
+            client.execute(Op.PING)
+
     def test_write_short(self):
         class Short(SimulatedSerial):
             def write(self,data): return len(data)-1

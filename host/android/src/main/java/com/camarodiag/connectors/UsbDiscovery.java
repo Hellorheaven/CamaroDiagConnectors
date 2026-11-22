@@ -62,18 +62,22 @@ public final class UsbDiscovery {
             BinaryDiscovery.Link link=new BinaryDiscovery.Link(){
                 private final byte[] pending=new byte[4096];
                 private int cursor=0,limit=0;
-                @Override public int read(byte[] b,int off,int count) throws IOException{
+                @Override public int read(byte[] b,int off,int count,int timeoutMs) throws IOException{
                     if(cursor==limit){
-                        limit=conn.bulkTransfer(input,pending,pending.length,1500);
+                        limit=conn.bulkTransfer(input,pending,pending.length,Math.min(timeoutMs,1500));
                         cursor=0;
                         if(limit<=0)throw new IOException("USB disconnected or timed out");
                     }
                     int n=Math.min(count,limit-cursor);
                     System.arraycopy(pending,cursor,b,off,n);cursor+=n;return n;
                 }
-                @Override public void write(byte[] b)throws IOException{
-                    if(conn.bulkTransfer(output,b,b.length,1500)!=b.length)
+                @Override public void write(byte[] b,int timeoutMs)throws IOException{
+                    checkNoBufferedInput();
+                    if(conn.bulkTransfer(output,b,b.length,Math.min(timeoutMs,1500))!=b.length)
                         throw new IOException("USB short write or timeout");
+                }
+                @Override public void checkNoBufferedInput()throws IOException{
+                    if(cursor!=limit)throw new IOException("Unexpected buffered USB data");
                 }
                 @Override public void close(){} // outer owner releases claimed interfaces
             };
