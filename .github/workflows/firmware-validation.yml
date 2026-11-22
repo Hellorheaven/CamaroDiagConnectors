@@ -14,6 +14,8 @@ jobs:
         run: |
           g++ -std=c++11 -Wall -Wextra -Werror -pedantic firmware/esp32s3/native-tests/discovery_parser_test.cpp -o /tmp/discovery_parser_test
           /tmp/discovery_parser_test
+          g++ -std=c++11 -Wall -Wextra -Werror -pedantic firmware/esp32s3/native-tests/programming_policy_test.cpp -o /tmp/programming_policy_test
+          /tmp/programming_policy_test
   esp32-build:
     runs-on: ubuntu-latest
     steps:
