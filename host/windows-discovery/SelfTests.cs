@@ -48,6 +48,7 @@ internal static class SelfTests
     }
     internal static int Run()
     {
+        ConnectorTlsReferenceSelfTests.Run();
         Require(BinaryDiscovery.Crc32("123456789"u8)==0xcbf43926u);
         using(var link=new Simulation(false,false))
         {
