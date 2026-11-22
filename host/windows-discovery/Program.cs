@@ -5,15 +5,15 @@ using CamaroDiagConnectors.Windows;
 if (args is ["--self-test"])
     return SelfTests.Run();
 
-if (!OperatingSystem.IsWindows() || args is not ["--port", var port] ||
-    !Regex.IsMatch(port, @"\ACOM[1-9][0-9]{0,3}\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+if (!OperatingSystem.IsWindows() || args.Length != 2 || args[0] != "--port" ||
+    !Regex.IsMatch(args[1], @"\ACOM[1-9][0-9]{0,3}\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
 {
     Console.Error.WriteLine("Usage (isolated prototype only): --port COM5 | --self-test");
     return 2;
 }
 try
 {
-    using var serial=new SerialPort(port,115200,Parity.None,8,StopBits.One)
+    using var serial=new SerialPort(args[1],115200,Parity.None,8,StopBits.One)
     {
         Handshake=Handshake.None, DtrEnable=true, RtsEnable=false,
         ReadTimeout=1500, WriteTimeout=1500
