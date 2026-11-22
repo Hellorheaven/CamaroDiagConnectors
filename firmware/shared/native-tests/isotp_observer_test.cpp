@@ -21,6 +21,9 @@ int main(){
   cd::IsoTpObserver seq(0x7e8,false);cf[0]=0x22;
   seq.feed(0x7e8,false,ff,8,0);
   assert(seq.feed(0x7e8,false,cf,5,1)==R::Fault);
+  cd::IsoTpObserver shortFinal(0x7e8,false);cf[0]=0x21;
+  assert(shortFinal.feed(0x7e8,false,ff,8,0)==R::Pending);
+  assert(shortFinal.feed(0x7e8,false,cf,4,1)==R::Fault);
   cd::IsoTpObserver invalid(0x800,false);
   assert(invalid.feed(0x800,false,sf,5,0)==R::Fault);
   cd::IsoTpObserver extended(0x18daf110,true);
