@@ -21,9 +21,10 @@ inline size_t encodeDiscovery(uint8_t opcode, uint16_t seq,
 class DiscoverySession {
  public:
   // Strict request payload = empty. All replies are nonempty fixed ASCII.
-  // Close session after error or sequence exhaustion. No downgrade fallback.
+  // Close session after error or the third canonical reply. No downgrade fallback.
   size_t dispatch(const FrameView& request, uint8_t* out, size_t capacity) {
-    if (closed_ || request.length != 0 || request.sequence != next_)
+    if (closed_ || request.length != 0 || request.sequence != next_ ||
+        request.opcode != next_ + 1)
       return reject();
     const char* reply=nullptr;
     switch(request.opcode) {
@@ -35,7 +36,7 @@ class DiscoverySession {
     const size_t n=encodeDiscovery(request.opcode,request.sequence,
        reinterpret_cast<const uint8_t*>(reply),std::strlen(reply),out,capacity);
     if (!n) return reject();
-    if(next_==0xffffu) closed_=true;
+    if(next_==2u) closed_=true;
     else ++next_;
     return n;
   }

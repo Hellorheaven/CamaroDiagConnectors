@@ -33,14 +33,20 @@ int main(){
   assert(!unknown.dispatch(v,out,sizeof(out)) && unknown.closed());
   DiscoverySession shortOutput; v.opcode=1;
   assert(!shortOutput.dispatch(v,out,12) && shortOutput.closed());
-  DiscoverySession exhaust;
-  for(unsigned i=0;i<=65535u;++i) {
-    v.sequence=uint16_t(i);
-    assert(exhaust.dispatch(v,out,sizeof(out)));
+  DiscoverySession wrongOrder; v.sequence=0; v.opcode=2;
+  assert(!wrongOrder.dispatch(v,out,sizeof(out)) && wrongOrder.closed());
+  DiscoverySession repeated; v.opcode=1;
+  assert(repeated.dispatch(v,out,sizeof(out)));
+  v.sequence=1;
+  assert(!repeated.dispatch(v,out,sizeof(out)) && repeated.closed());
+  DiscoverySession complete;
+  for(unsigned i=0;i<3;++i) {
+    v.sequence=uint16_t(i); v.opcode=uint8_t(i+1);
+    assert(complete.dispatch(v,out,sizeof(out)));
   }
-  assert(exhaust.closed());
-  v.sequence=0;
-  assert(!exhaust.dispatch(v,out,sizeof(out)));
+  assert(complete.closed());
+  v.sequence=3; v.opcode=1;
+  assert(!complete.dispatch(v,out,sizeof(out)));
   assert(!encodeDiscovery(1,0,nullptr,1,out,sizeof(out)));
   assert(!encodeDiscovery(1,0,nullptr,4097,out,sizeof(out)));
 }

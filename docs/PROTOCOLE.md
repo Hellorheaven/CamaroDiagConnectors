@@ -11,7 +11,7 @@ Le firmware ESP32-S3 **actuel** écoute un port série ASCII 115200 bauds, avec 
 
 Aucun opcode d'accès à la mémoire ou au bus du véhicule n'est implémenté.
 
-Le **framing binaire défini côté Python est un modèle hors ligne uniquement**, incompatible avec ce firmware ASCII. Format de simulation : magic `CD`, version sur un octet, opcode sur un octet, séquence uint16 LE, longueur uint16 LE, payload, CRC32 LE. Seuls PING, CAPABILITIES et STATUS existent. À développer avant déploiement : négociation de version, timeouts, contrôle de flux, authentification, refus des commandes destructives non autorisées et arrêt sécurisé.
+Une variante firmware binaire expérimentale distincte est disponible pour une carte isolée, incompatible avec le firmware ASCII. Format CD/1 : magic `CD`, version sur un octet, opcode sur un octet, séquence uint16 LE, longueur uint16 LE, payload, CRC32 LE. Seuls PING, CAPABILITIES et STATUS existent. Session unique : PING (séquence 0), CAPABILITIES (1), STATUS (2), puis fermeture. Tout écart d'ordre, de séquence ou de réponse canonique ferme la session ; aucun fallback ASCII. Redémarrer seulement la carte isolée pour une nouvelle découverte. Aucun accès ECU ou mémoire ni authentification cryptographique. Le CRC n'est pas une preuve d'identité.
 
 ## Validation des réponses côté hôte
 

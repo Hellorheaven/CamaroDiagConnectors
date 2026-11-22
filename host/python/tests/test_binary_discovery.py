@@ -27,7 +27,10 @@ class BinaryDiscoveryTests(unittest.TestCase):
         client=BinaryDiscoveryClient(serial)
         self.assertEqual(client.verify_read_only(),tuple(v.decode() for v in REPLIES.values()))
         self.assertEqual([f.sequence for f in serial.sent],[0,1,2])
-        self.assertFalse(client.closed)
+        self.assertTrue(client.closed)
+        with self.assertRaises(IOError):
+            client.execute(Op.PING)
+        self.assertEqual(len(serial.sent), 3)
     def assert_fails_closed(self, transform):
         serial=SimulatedSerial(transform)
         client=BinaryDiscoveryClient(serial)
@@ -49,12 +52,26 @@ class BinaryDiscoveryTests(unittest.TestCase):
         self.assert_fails_closed(lambda b:encode_frame(Frame(Op.PING,0,b"PONG counterfeit")))
     def test_empty_reply(self):
         self.assert_fails_closed(lambda b:b"")
-    def test_enabled_capability(self):
-        serial=SimulatedSerial(lambda b:encode_frame(Frame(Op.CAPABILITIES,0,CAPS.replace(b"hs_can=disabled",b"hs_can=enabled"))))
+    def test_enabled_or_reordered_capability(self):
+        for caps in (CAPS.replace(b"hs_can=disabled",b"hs_can=enabled"),
+                     CAPS.replace(b"hs_can=disabled sw_can=disabled",b"sw_can=disabled hs_can=disabled")):
+            def transform(wire):
+                f=decode_frame(wire)
+                return encode_frame(Frame(f.op,f.sequence,caps)) if f.op==Op.CAPABILITIES else wire
+            serial=SimulatedSerial(transform)
+            client=BinaryDiscoveryClient(serial)
+            client.execute(Op.PING)
+            with self.assertRaises(ValueError):
+                client.execute(Op.CAPABILITIES)
+            self.assertTrue(client.closed)
+            self.assertEqual(len(serial.sent),2)
+    def test_wrong_order_never_transmits(self):
+        serial=SimulatedSerial()
         client=BinaryDiscoveryClient(serial)
         with self.assertRaises(ValueError):
-            client.execute(Op.CAPABILITIES)
+            client.execute(Op.STATUS)
         self.assertTrue(client.closed)
+        self.assertEqual(serial.sent,[])
     def test_write_short(self):
         class Short(SimulatedSerial):
             def write(self,data): return len(data)-1

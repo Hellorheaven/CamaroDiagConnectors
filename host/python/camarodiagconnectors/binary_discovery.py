@@ -4,7 +4,11 @@ CRC and sequencing detect accidental errors; neither authenticates a device.
 No vehicle, memory, or programming operation is exposed.
 """
 from .framing import Frame, Op, encode_frame, decode_frame, MAX_PAYLOAD
-from .protocol import parse_caps, parse_status
+_EXPECTED = {
+    Op.PING: "PONG CamaroDiagConnectors 0.1.0",
+    Op.CAPABILITIES: "CAPS hs_can=disabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled",
+    Op.STATUS: "STATUS mode=prototype write=disabled",
+}
 
 class BinaryDiscoveryClient:
     def __init__(self, transport):
@@ -29,8 +33,8 @@ class BinaryDiscoveryClient:
         if self._closed:
             raise IOError("Discovery session closed; reset device before reconnecting")
         try:
-            if not isinstance(op, Op):
-                raise ValueError("Unsupported discovery operation")
+            if not isinstance(op, Op) or int(op) != self._next + 1:
+                raise ValueError("Unexpected discovery operation order")
             wire = encode_frame(Frame(op, self._next, b""))
             if self._transport.write(wire) != len(wire):
                 raise IOError("Short binary request write")
@@ -47,15 +51,9 @@ class BinaryDiscoveryClient:
             text = frame.payload.decode("ascii")
             if not all(32 <= ord(c) <= 126 for c in text):
                 raise ValueError("Non-printable discovery payload")
-            if op == Op.PING:
-                if text != "PONG CamaroDiagConnectors 0.1.0":
-                    raise ValueError("Unexpected prototype identity")
-            elif op == Op.CAPABILITIES:
-                if any(vars(parse_caps(text)).values()):
-                    raise ValueError("Unsafe capability claim")
-            elif op == Op.STATUS:
-                parse_status(text)
-            if self._next == 65535:
+            if text != _EXPECTED[op]:
+                raise ValueError("Noncanonical discovery response")
+            if self._next == 2:
                 self._closed = True
             else:
                 self._next += 1
