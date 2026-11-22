@@ -32,6 +32,8 @@ jobs:
           /tmp/interprocessor_link_test
           g++ -std=c++11 -Wall -Wextra -Werror -pedantic firmware/shared/native-tests/isotp_observer_test.cpp -o /tmp/isotp_observer_test
           /tmp/isotp_observer_test
+          g++ -std=c++11 -Wall -Wextra -Werror -pedantic firmware/shared/native-tests/kline_observer_test.cpp -o /tmp/kline_observer_test
+          /tmp/kline_observer_test
   esp32-build:
     runs-on: ubuntu-latest
     steps:
