@@ -1,0 +1,25 @@
+name: Firmware validation
+on:
+  pull_request:
+    paths:
+      - 'firmware/esp32s3/**'
+      - '.github/workflows/firmware-validation.yml'
+  workflow_dispatch:
+jobs:
+  native-parser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run native USB parser tests
+        run: |
+          g++ -std=c++11 -Wall -Wextra -Werror -pedantic firmware/esp32s3/native-tests/discovery_parser_test.cpp -o /tmp/discovery_parser_test
+          /tmp/discovery_parser_test
+  esp32-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install platformio==6.1.18
+      - run: pio run -d firmware/esp32s3
