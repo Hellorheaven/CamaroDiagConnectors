@@ -1,3 +1,7 @@
+# Feuille de route historique
+
+Toutes les évolutions, y compris matérielles, sont désormais suivies dans [CamaroDiag #80](https://github.com/Hellorheaven/CamaroDiag/issues/80) et [le module connectors](https://github.com/Hellorheaven/CamaroDiag/tree/main/connectors). Ancienne feuille de route :
+
 # Feuille de route matérielle
 
 Les travaux de firmware, pilotes, CI, applications et compatibilité logicielle sont suivis dans [CamaroDiag #80](https://github.com/Hellorheaven/CamaroDiag/issues/80), avec les issues migrées #81–#93.
