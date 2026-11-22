@@ -1,47 +1,29 @@
 #include <Arduino.h>
-#include <cstring>
+#include "discovery_parser.h"
 
-// Prototype découverte série, AUCUNE opération sur véhicule ni puce.
-static constexpr size_t MAX_LINE = 96;
-static char line[MAX_LINE + 1];
-static size_t count = 0;
-static bool discarding = false;
+static DiscoveryParser parser;
 
-static void respond(const char *cmd) {
-  if (strcmp(cmd, "PING") == 0) {
-    Serial.println("PONG CamaroDiagConnectors 0.1.0");
-  } else if (strcmp(cmd, "CAPS") == 0) {
-    Serial.println("CAPS hs_can=disabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled");
-  } else if (strcmp(cmd, "STATUS") == 0) {
-    Serial.println("STATUS mode=prototype write=disabled");
-  } else {
-    Serial.println("ERR UNSUPPORTED");
+static void respond(DiscoveryParser::Result result) {
+  using R = DiscoveryParser::Result;
+  switch (result) {
+    case R::Ping: Serial.println("PONG CamaroDiagConnectors 0.1.0"); break;
+    case R::Caps: Serial.println("CAPS hs_can=disabled sw_can=disabled eeprom_read=disabled eeprom_write=disabled ecu_flash=disabled j2534=disabled"); break;
+    case R::Status: Serial.println("STATUS mode=prototype write=disabled"); break;
+    case R::Unsupported: Serial.println("ERR UNSUPPORTED"); break;
+    case R::Malformed: Serial.println("ERR MALFORMED"); break;
+    case R::TooLong: Serial.println("ERR LINE_TOO_LONG"); break;
+    case R::Timeout: Serial.println("ERR TIMEOUT"); break;
+    case R::None: break;
   }
 }
 
-void setup() {
-  Serial.begin(115200);
-}
+void setup() { Serial.begin(115200); }
 
 void loop() {
-  while (Serial.available() > 0) {
-    char c = static_cast<char>(Serial.read());
-    if (c == '\n') {
-      if (discarding) {
-        Serial.println("ERR LINE_TOO_LONG");
-      } else {
-        if (count != 0 && line[count - 1] == '\r') --count;
-        line[count] = '\0';
-        respond(line);
-      }
-      count = 0;
-      discarding = false;
-    } else if (!discarding) {
-      if (count < MAX_LINE) {
-        line[count++] = c;
-      } else {
-        discarding = true;
-      }
-    }
+  parser.expire(millis());
+  // Limit each iteration so sustained USB traffic cannot monopolize the loop.
+  for (unsigned n = 0; n < 64 && Serial.available() > 0; ++n) {
+    const int byte = Serial.read();
+    if (byte >= 0) respond(parser.feed(static_cast<uint8_t>(byte), millis()));
   }
 }
