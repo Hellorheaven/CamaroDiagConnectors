@@ -48,3 +48,9 @@ python -m camarodiagconnectors.offline_cli plan --target 24LC256 --technology i2
 ```
 
 `backup` crée `sauvegarde.bin` et `sauvegarde.json` en exclusivité (jamais d'écrasement). `verify` contrôle intégrité et couverture déclarée. `plan` indique les pages/secteurs qui changeraient, refuse les régions protégées et préserve tous les octets voisins de l'image. **Ni le fichier candidat ni le manifeste ne constituent une preuve de compatibilité matérielle ou une autorisation d'écriture.**
+
+## Documentation de raccordement
+
+[Guide générique des alimentations, broches et modes de raccordement](docs/user/wiring/README.md) · [Catalogue des fiches par calculateur](docs/user/wiring/ecu/README.md).
+
+USB 5 V prioritaire pour la logique du boîtier ; alimentation externe stabilisée réservée à la cible BENCH, via protections. Une source auxiliaire maintenue peut être requise pour une opération critique. Les fiches documentaires ne constituent pas une qualification physique. Respecter les variantes ECU et les spécifications constructeur.
