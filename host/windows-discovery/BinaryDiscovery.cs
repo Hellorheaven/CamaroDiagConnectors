@@ -3,9 +3,11 @@ using System.Text;
 
 namespace CamaroDiagConnectors.Windows;
 
-internal sealed class BinaryDiscovery(Stream stream)
+internal sealed class BinaryDiscovery(Stream stream, Func<long>? clockMs = null)
 {
     private bool used;
+    private const int ReplyBudgetMs = 3000;
+    private readonly Func<long> now = clockMs ?? (() => Environment.TickCount64);
     private static readonly string[] Expected =
     [
         "PONG CamaroDiagConnectors 0.1.0",
@@ -38,12 +40,38 @@ internal sealed class BinaryDiscovery(Stream stream)
         return buffer;
     }
 
+    private int Remaining(long since)
+    {
+        long elapsed = now() - since;
+        if (elapsed < 0 || elapsed >= ReplyBudgetMs)
+            throw new TimeoutException("Discovery response deadline exceeded");
+        return ReplyBudgetMs - (int)elapsed;
+    }
+
+    private void ReadBounded(Span<byte> buffer, long since)
+    {
+        while (!buffer.IsEmpty)
+        {
+            int remaining = Remaining(since);
+            if (stream.CanTimeout)
+                stream.ReadTimeout = remaining;
+            int count = stream.Read(buffer);
+            if (count <= 0 || count > buffer.Length)
+                throw new IOException("Incomplete discovery reply");
+            Remaining(since);
+            buffer = buffer[count..];
+        }
+    }
+
     private string Exchange(byte op, ushort seq)
     {
+        long since = now();
+        if (stream.CanTimeout)
+            stream.WriteTimeout = Remaining(since);
         stream.Write(Encode(op,seq,ReadOnlySpan<byte>.Empty));
         stream.Flush();
         Span<byte> header=stackalloc byte[8];
-        stream.ReadExactly(header);
+        ReadBounded(header, since);
         if (header[0]!='C'||header[1]!='D'||header[2]!=1||header[3]!=op||
             BinaryPrimitives.ReadUInt16LittleEndian(header[4..])!=seq)
             throw new IOException("Unexpected discovery response");
@@ -51,7 +79,7 @@ internal sealed class BinaryDiscovery(Stream stream)
         if(length is < 1 or > 244) throw new IOException("Invalid discovery length");
         var frame=new byte[length+12];
         header.CopyTo(frame);
-        stream.ReadExactly(frame.AsSpan(8));
+        ReadBounded(frame.AsSpan(8), since);
         if(BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(length+8))!=Crc32(frame.AsSpan(0,length+8)))
             throw new IOException("Invalid discovery CRC");
         for (int i=8;i<length+8;i++)

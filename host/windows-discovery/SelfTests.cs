@@ -63,6 +63,16 @@ internal static class SelfTests
             ExpectFailure(()=>client.Verify());
             Require(link.Commands==1);
         }
+        using (var slow = new Simulation(false, false))
+        {
+            long ticks = 0;
+            var client = new BinaryDiscovery(slow, () => ticks += 500);
+            bool timeout = false;
+            try { client.Verify(); }
+            catch (TimeoutException) { timeout = true; }
+            Require(timeout && slow.Commands == 1);
+            ExpectFailure(() => client.Verify());
+        }
         Console.WriteLine("Windows protocol self-tests passed (simulation).");
         return 0;
     }
