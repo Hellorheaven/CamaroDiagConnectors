@@ -23,8 +23,13 @@ inline bool nonzero(const uint8_t* p,size_t n){
   return false;
 }
 inline bool valid(const Record& r){
-  return uint8_t(r.stage)>=1&&uint8_t(r.stage)<=10&&
-         nonzero(r.transaction,16)&&nonzero(r.manifestDigest,32);
+  const auto stage=uint8_t(r.stage);
+  if(stage<1||stage>10||!nonzero(r.transaction,16)||!nonzero(r.manifestDigest,32))
+    return false;
+  // The NVS writer starts at Prepared(0); no valid successor skips stages.
+  if(r.stage==Stage::Aborted)return r.sequence==1;
+  if(r.stage==Stage::RecoveryRequired)return r.sequence>=2&&r.sequence<=7;
+  return r.sequence==uint32_t(stage-1);
 }
 inline bool encode(const Record& r,uint8_t* out,size_t n){
   if(!out||n!=RecordSize||!valid(r))return false;

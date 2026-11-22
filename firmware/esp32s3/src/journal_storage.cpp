@@ -4,6 +4,8 @@
 namespace cd { namespace journal {
 namespace {
 enum class Read { Missing, Valid, Error };
+// Single-owner prototype: uncertain persistence poisons this boot's writer.
+bool writeLocked=false;
 Read readRecord(nvs_handle_t handle,Record& result){
   uint8_t bytes[RecordSize]{};
   size_t count=sizeof(bytes);
@@ -25,20 +27,23 @@ BootDisposition inspectCheckpoint(Record& out){
 }
 bool persistCheckpoint(const Record& next){
   uint8_t bytes[RecordSize]{},check[RecordSize]{};
+  if(writeLocked)return false;
   if(!encode(next,bytes,sizeof(bytes)))return false;
   nvs_handle_t handle;
-  if(nvs_open("cd-journal",NVS_READWRITE,&handle)!=ESP_OK)return false;
+  if(nvs_open("cd-journal",NVS_READWRITE,&handle)!=ESP_OK){writeLocked=true;return false;}
   Record previous;
   const Read state=readRecord(handle,previous);
   const bool allowed=(state==Read::Missing&&next.stage==Stage::Prepared&&next.sequence==0)||
                      (state==Read::Valid&&successor(previous,next));
   bool ok=false;
+  if(state==Read::Error)writeLocked=true;
   if(allowed&&nvs_set_blob(handle,"checkpoint",bytes,sizeof(bytes))==ESP_OK&&
      nvs_commit(handle)==ESP_OK){
     size_t length=sizeof(check);
     ok=nvs_get_blob(handle,"checkpoint",check,&length)==ESP_OK&&
        length==sizeof(check)&&std::memcmp(bytes,check,sizeof(bytes))==0;
   }
+  if(allowed&&!ok)writeLocked=true;
   nvs_close(handle);
   // A failed write/verify is an uncertain commit; caller must lock out.
   // No retries or target reset are issued here.
