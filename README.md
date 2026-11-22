@@ -12,14 +12,16 @@ Projet matériel et logiciel indépendant pour **[CamaroDiag](https://github.com
 - **MCU internes** : méthodes BOOT/BDM/Nexus/JTAG distinctes des EEPROM externes ; ne pas supposer de compatibilité à partir du nom d'un ECU.
 
 ## État actuel
-Le firmware ESP32-S3 fournit uniquement `PING`, `CAPS` et `STATUS` ; `CAPS` déclare toutes les fonctions véhicule/écriture désactivées. Le client Python fournit analyse hors ligne, format de trame expérimental, sauvegardes de fichiers et planification de patches sans accès matériel.
+Le firmware ESP32-S3 fournit uniquement `PING`, `CAPS` et `STATUS`, en variantes ASCII et binaire distinctes ; toutes les fonctions véhicule/écriture restent désactivées. Le prototype STM32G474 démarre avec signaux cibles inactifs et diagnostic ST-LINK. Le client Python propose découverte USB, sauvegardes et planification de patches hors ligne, transport TLS 1.3 de référence sur socket et journal de programmation de simulation. Le client Android USB Host CDC est un prototype de découverte autonome, à qualifier sur carte réelle. Aucun accès physique ECU, SPI interprocesseur ou CAN réel n'est activé.
 
 | Dossier | Contenu |
 |---|---|
 | `firmware/esp32s3` | Prototype série USB en lecture seule |
 | `host/python` | Client de découverte, simulateurs et tests |
 | `host/windows-j2534` | Spécification du pilote Windows futur |
-| `host/android` | Plan d'intégration dans CamaroDiag Android |
+| `host/android` | Client natif de découverte USB CDC, non intégré à l'application |
+| `firmware/stm32g4` | Prototype Nucleo G474RE isolé |
+| `firmware/shared` | Contrat interprocesseur et réassemblage ISO-TP passif, hors matériel |
 | `hardware` | Contraintes électriques / transceivers / connectique |
 | `docs` | Architecture, protocole, risques et validation |
 
@@ -28,10 +30,10 @@ Le firmware ESP32-S3 fournit uniquement `PING`, `CAPS` et `STATUS` ; `CAPS` déc
 cd host/python
 python -m unittest discover -s tests -v
 ```
-Pour tenter la découverte USB sur une carte ESP32-S3 **isolée du véhicule** : flasher `firmware/esp32s3` avec PlatformIO (build non validé à ce stade), installer `pyserial`, puis `python -m camarodiagconnectors --port COM5 ping`.
+Voir [découverte USB binaire](docs/user/usb-binary-discovery.md) et [Android](host/android/README.md). Pour tenter la découverte USB sur une carte ESP32-S3 **isolée du véhicule** : flasher `firmware/esp32s3` avec PlatformIO (compilation et qualification physique distinctes), installer `pyserial`, puis `python -m camarodiagconnectors --port COM5 ping`.
 
 ## Gouvernance
-Projet distinct de la [PR CamaroDiag #54](https://github.com/Hellorheaven/CamaroDiag/pull/54), qui ne doit pas être ralentie. Coordination et exigences : [CamaroDiag #69](https://github.com/Hellorheaven/CamaroDiag/issues/69).
+Projet indépendant de CamaroDiag. Coordination et exigences : [CamaroDiag #69](https://github.com/Hellorheaven/CamaroDiag/issues/69).
 
 Aucune licence open source choisie pour le moment. Ne pas publier de dumps, clés ou images firmware GM ni des données véhicules privées.
 
@@ -54,3 +56,7 @@ python -m camarodiagconnectors.offline_cli plan --target 24LC256 --technology i2
 [Guide générique des alimentations, broches et modes de raccordement](docs/user/wiring/README.md) · [Catalogue des fiches par calculateur](docs/user/wiring/ecu/README.md).
 
 USB 5 V prioritaire pour la logique du boîtier ; alimentation externe stabilisée réservée à la cible BENCH, via protections. Une source auxiliaire maintenue peut être requise pour une opération critique. Les fiches documentaires ne constituent pas une qualification physique. Respecter les variantes ECU et les spécifications constructeur.
+
+## Limites de sécurité
+
+La découverte ASCII/binaire ne prouve pas l'identité de la carte. Le TLS mutuel de simulation ne s'applique pas encore au transport USB. Le journal logiciel ne garantit pas la restauration d'un calculateur et ne doit pas servir à déclencher une écriture. Aucun mode de programmation ne peut être activé sans qualification par cible, alimentation et route (#8, #9, #10).
