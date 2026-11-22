@@ -16,7 +16,12 @@ flowchart TD
   M --> I[Interverrouillage matériel]
   I --> S
   S --> H[Transceiver HS CAN / CAN FD]
-  S --> C[Transceiver GM SWCAN]
+  S --> C[Transceiver SWCAN]
+  S --> K[Transceivers K-Line / L-Line]
+  K --> O
+  I --> K
+  F[FTDI USB KKL candidat] --> S
+  R[Module Bluetooth Classic candidat] --> E
   H --> O[OBD ou faisceau CAN direct / BENCH]
   C --> O
   S --> D[Adaptateur MCU avec adaptation niveaux]
@@ -54,3 +59,6 @@ flowchart TD
 - https://www.st.com/en/microcontrollers-microprocessors/stm32g474re.html
 - https://www.ti.com/product/TCAN1042V-Q1
 - https://www.onsemi.com/download/data-sheet/pdf/ncv7356-d.pdf
+
+## Extension moto et logiciels tiers (#11, #12)
+Prévoir USB FTDI réel distinct de CDC, UART/ligne BREAK et timings K/L-Line, module Bluetooth Classic/SPP additionnel si exigé (ESP32-S3 BLE uniquement). Toute voie tierce passe par le contrôle d'accès et le multiplexage local ; aucune liaison brute FTDI directement vers la cible. Prévoir VCI multi-protocole avec modes mutuellement exclusifs, autorisations et surveillance communes. Aucun brochage moto générique, aucun matériel qualifié.
