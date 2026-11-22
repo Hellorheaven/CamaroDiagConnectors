@@ -28,3 +28,6 @@ L'export refuse également les liens symboliques pendants (sans cible existante)
 ## Géométrie mémoire hors ligne
 
 Le planificateur refuse désormais les technologies mémoire inconnues, les dimensions booléennes (Python considère autrement `True` comme un entier) et les zones protégées qui ne sont pas des objets `Region`. Ces contrôles empêchent qu'une description mal typée produise un plan ambigu ; ils ne vérifient **ni** la référence réelle de la puce, **ni** sa tension, **ni** son brochage. Aucun plan ne confère une autorisation d'écriture sur matériel.
+
+## Autorisation locale des identités TLS — référence hors ligne
+Le modèle Python TLS 1.3 exige maintenant un certificat client autorisé par empreinte SHA-256 en plus de la CA, et un certificat boîtier épinglé en plus de la CA et du nom. Une liste vide bloque tout ; une identité délivrée par la même CA n'est pas automatiquement autorisée. La suppression d'une empreinte interdit la connexion suivante. Les sessions TLS reprises sont refusées dans le prototype. Ne pas confondre cette liste locale de simulation et un provisionnement embarqué : stockage protégé, révocation des sessions actives, rôles et transport physique restent à qualifier. Aucun droit ECU n'en découle.

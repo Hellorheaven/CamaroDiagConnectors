@@ -2,6 +2,7 @@ import concurrent.futures
 import shutil
 import socket
 import ssl
+import hashlib
 import subprocess
 import tempfile
 import unittest
@@ -27,6 +28,7 @@ class SecureTransportTests(unittest.TestCase):
                     "-addext","keyUsage=critical,keyCertSign,cRLSign")
         for name,ca,usage in (("connector","device-ca","serverAuth"),
                               ("host","host-ca","clientAuth"),
+                              ("second-host","host-ca","clientAuth"),
                               ("foreign","foreign-ca","clientAuth")):
             openssl("req","-newkey","rsa:2048","-nodes","-subj","/CN="+name,
                     "-keyout",name+".key","-out",name+".csr")
@@ -42,19 +44,29 @@ class SecureTransportTests(unittest.TestCase):
     def client(self,who="host"):
         p=self.root
         return client_context(ca_file=p/"device-ca.crt",cert_file=p/(who+".crt"),key_file=p/(who+".key"))
-    def exchange(self,client,server,name="connector",expect_success=True):
+    def pin(self,name):
+        return hashlib.sha256(ssl.PEM_cert_to_DER_cert(
+            (self.root/(name+".crt")).read_text())).hexdigest()
+    def exchange(self,client,server,name="connector",expect_success=True,
+                 host_pins=None, device_pin=None):
+        if host_pins is None:
+            host_pins=(self.pin("host"),)
+        if device_pin is None:
+            device_pin=self.pin("connector")
         a,b=socket.socketpair()
         with a,b,concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             a.settimeout(3); b.settimeout(3)
             def worker():
-                with accept(server,a) as stream:
-                    self.assertEqual(stream.recv(1),b"P")
+                with accept(server,a,allowed_host_sha256=host_pins) as stream:
+                    if stream.recv(1)!=b"P":
+                        raise ConnectionError("Host closed before discovery")
                     stream.sendall(b"Q")
             future=pool.submit(worker)
             try:
-                with connect(client,b,name) as stream:
+                with connect(client,b,name,device_sha256=device_pin) as stream:
                     stream.sendall(b"P")
-                    self.assertEqual(stream.recv(1),b"Q")
+                    if stream.recv(1)!=b"Q":
+                        raise ConnectionError("Device closed before discovery")
                 future.result(timeout=5)
                 if not expect_success:
                     self.fail("Unauthorized TLS session succeeded")
@@ -83,4 +95,16 @@ class SecureTransportTests(unittest.TestCase):
         ctx=self.client()
         ctx.minimum_version=ssl.TLSVersion.TLSv1_2
         with socket.socket() as sock, self.assertRaises(ValueError):
-            connect(ctx,sock,"connector")
+            connect(ctx,sock,"connector",device_sha256=self.pin("connector"))
+    def test_same_ca_does_not_imply_local_authorization(self):
+        self.exchange(self.client("second-host"),self.server(),expect_success=False)
+        self.exchange(self.client("second-host"),self.server(),host_pins=(self.pin("second-host"),))
+    def test_revoked_host_cannot_reconnect_with_previous_certificate(self):
+        self.exchange(self.client(),self.server(),host_pins=(self.pin("host"),self.pin("second-host")))
+        self.exchange(self.client(),self.server(),host_pins=(self.pin("second-host"),),expect_success=False)
+    def test_valid_ca_and_hostname_do_not_replace_exact_device_pin(self):
+        self.exchange(self.client(),self.server(),device_pin="00"*32,expect_success=False)
+    def test_empty_or_malformed_pin_registry_fails_before_handshake(self):
+        for pins in ((), ("invalid",), self.pin("host")):
+            with socket.socket() as sock, self.assertRaises(ValueError):
+                accept(self.server(),sock,allowed_host_sha256=pins)
